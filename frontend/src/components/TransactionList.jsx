@@ -14,24 +14,31 @@ function shortHash(hash) {
   return `${hash.slice(0, 10)}...${hash.slice(-6)}`;
 }
 
-export default function TransactionList({ transactions }) {
+export default function TransactionList({ transactions, onSelect }) {
   if (!transactions || transactions.length === 0) {
     return (
       <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-        <div className="text-slate-400 text-center py-8">Loading transactions...</div>
+        <div className="text-slate-400 text-center py-8">No transactions match your filters.</div>
       </div>
     );
   }
 
   return (
     <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-700">
-        <h2 className="text-lg font-semibold text-white">Recent Transactions</h2>
-        <p className="text-slate-400 text-sm mt-1">{transactions.length} loaded</p>
+      <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-white">Transactions</h2>
+          <p className="text-slate-400 text-sm mt-1">{transactions.length} shown</p>
+        </div>
+        <span className="text-slate-500 text-xs">Click any row for details</span>
       </div>
       <div className="divide-y divide-slate-700">
         {transactions.map((tx) => (
-          <div key={tx.hash} className="px-6 py-4 hover:bg-slate-700/50 transition-colors">
+          <button
+            key={tx.hash}
+            onClick={() => onSelect(tx)}
+            className="w-full text-left px-6 py-4 hover:bg-slate-700/50 transition-colors cursor-pointer"
+          >
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-1">
@@ -39,6 +46,9 @@ export default function TransactionList({ transactions }) {
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${riskColor(tx.risk_score)}`}>
                     Risk: {tx.risk_score}
                   </span>
+                  {tx.ai_explanation && (
+                    <span className="text-xs text-blue-400">🧠 AI analyzed</span>
+                  )}
                 </div>
                 <div className="text-xs text-slate-400 font-mono truncate">
                   {shortHash(tx.from_address)} → {shortHash(tx.to_address)}
@@ -53,7 +63,7 @@ export default function TransactionList({ transactions }) {
                 </div>
               </div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
     </div>

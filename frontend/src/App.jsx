@@ -1,22 +1,32 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api } from './api/client';
 import StatsBar from './components/StatsBar';
 import TransactionList from './components/TransactionList';
+import TransactionModal from './components/TransactionModal';
+import SearchBar from './components/SearchBar';
+import FilterTabs from './components/FilterTabs';
+import RiskChart from './components/RiskChart';
 
 function App() {
   const [stats, setStats] = useState(null);
   const [transactions, setTransactions] = useState([]);
+  const [flagged, setFlagged] = useState([]);
   const [error, setError] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [selectedTx, setSelectedTx] = useState(null);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('all');
 
   async function loadData() {
     try {
-      const [statsData, txsData] = await Promise.all([
+      const [statsData, txsData, flaggedData] = await Promise.all([
         api.getStats(),
-        api.getTransactions(20),
+        api.getTransactions(50),
+        api.getFlagged(20),
       ]);
       setStats(statsData);
       setTransactions(txsData.transactions);
+      setFlagged(flaggedData.transactions);
       setLastUpdate(new Date());
       setError(null);
     } catch (err) {
@@ -29,6 +39,31 @@ function App() {
     const interval = setInterval(loadData, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  const counts = useMemo(() => ({
+    all: transactions.length,
+    flagged: flagged.length,
+    high: flagged.filter((tx) => tx.risk_score >= 40).length,
+  }), [transactions, flagged]);
+
+  const filtered = useMemo(() => {
+    let list = transactions;
+
+    // For flagged/high views, use the dedicated flagged list
+    if (filter === 'flagged') list = flagged;
+    else if (filter === 'high') list = flagged.filter((tx) => tx.risk_score >= 40);
+
+    if (search.trim()) {
+      const s = search.toLowerCase();
+      list = list.filter((tx) =>
+        tx.hash.toLowerCase().includes(s) ||
+        tx.from_address.toLowerCase().includes(s) ||
+        tx.to_address.toLowerCase().includes(s)
+      );
+    }
+
+    return list;
+  }, [transactions, flagged, filter, search]);
 
   return (
     <div className="min-h-screen bg-slate-900">
@@ -64,12 +99,29 @@ function App() {
         )}
 
         <StatsBar stats={stats} />
-        <TransactionList transactions={transactions} />
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <div className="lg:col-span-2">
+            <div className="flex gap-3 mb-4">
+              <SearchBar value={search} onChange={setSearch} />
+            </div>
+            <FilterTabs active={filter} onChange={setFilter} counts={counts} />
+          </div>
+          <div className="lg:col-span-1">
+            <RiskChart transactions={transactions} />
+          </div>
+        </div>
+
+        <TransactionList transactions={filtered} onSelect={setSelectedTx} />
       </main>
 
       <footer className="text-center text-slate-600 text-xs py-8">
         Built with FastAPI + PostgreSQL + Ollama + React
       </footer>
+
+      {selectedTx && (
+        <TransactionModal tx={selectedTx} onClose={() => setSelectedTx(null)} />
+      )}
     </div>
   );
 }
