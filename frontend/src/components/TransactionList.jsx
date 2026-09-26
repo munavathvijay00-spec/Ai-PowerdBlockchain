@@ -1,0 +1,61 @@
+/**
+ * List of recent transactions with risk color coding.
+ */
+
+function riskColor(score) {
+  if (score >= 80) return 'text-red-500 bg-red-500/10 border-red-500/30';
+  if (score >= 40) return 'text-orange-500 bg-orange-500/10 border-orange-500/30';
+  if (score >= 20) return 'text-yellow-500 bg-yellow-500/10 border-yellow-500/30';
+  return 'text-green-500 bg-green-500/10 border-green-500/30';
+}
+
+function shortHash(hash) {
+  if (!hash) return 'N/A';
+  return `${hash.slice(0, 10)}...${hash.slice(-6)}`;
+}
+
+export default function TransactionList({ transactions }) {
+  if (!transactions || transactions.length === 0) {
+    return (
+      <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+        <div className="text-slate-400 text-center py-8">Loading transactions...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+      <div className="px-6 py-4 border-b border-slate-700">
+        <h2 className="text-lg font-semibold text-white">Recent Transactions</h2>
+        <p className="text-slate-400 text-sm mt-1">{transactions.length} loaded</p>
+      </div>
+      <div className="divide-y divide-slate-700">
+        {transactions.map((tx) => (
+          <div key={tx.hash} className="px-6 py-4 hover:bg-slate-700/50 transition-colors">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 mb-1">
+                  <span className="text-sm font-mono text-slate-300">{shortHash(tx.hash)}</span>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${riskColor(tx.risk_score)}`}>
+                    Risk: {tx.risk_score}
+                  </span>
+                </div>
+                <div className="text-xs text-slate-400 font-mono truncate">
+                  {shortHash(tx.from_address)} → {shortHash(tx.to_address)}
+                </div>
+              </div>
+              <div className="text-right ml-4">
+                <div className="text-lg font-semibold text-white">
+                  {tx.value_eth.toFixed(4)} ETH
+                </div>
+                <div className="text-xs text-slate-500">
+                  Block {tx.block_number.toLocaleString()}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
