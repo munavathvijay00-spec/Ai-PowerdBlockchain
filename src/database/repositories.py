@@ -100,7 +100,9 @@ class TransactionRepository:
                 t.block_number,
                 t.timestamp,
                 t.status,
-                t.risk_score
+                t.risk_score,
+                t.risk_factors,
+                t.ai_explanation
             FROM transactions t
             JOIN addresses a_from ON t.from_address_id = a_from.id
             JOIN addresses a_to ON t.to_address_id = a_to.id
@@ -146,6 +148,28 @@ class TransactionRepository:
         """
         return await self.db.fetch(query, limit)
 
+    async def list_flagged(self, min_score: int = 20, limit: int = 100) -> List[Dict]:
+        """Fetch flagged transactions (risk_score >= min_score) for AI explanation."""
+        query = """
+            SELECT 
+                t.hash,
+                a_from.address AS from_address,
+                a_to.address AS to_address,
+                t.value,
+                t.block_number,
+                t.timestamp,
+                t.risk_score,
+                t.risk_factors,
+                t.ai_explanation
+            FROM transactions t
+            JOIN addresses a_from ON t.from_address_id = a_from.id
+            JOIN addresses a_to ON t.to_address_id = a_to.id
+            WHERE t.risk_score >= $1
+            ORDER BY t.risk_score DESC, t.timestamp DESC
+            LIMIT $2
+        """
+        return await self.db.fetch(query, min_score, limit)
+
     async def count(self) -> int:
         """Total transactions stored."""
         return await self.db.fetchval("SELECT COUNT(*) FROM transactions")
@@ -158,3 +182,12 @@ class TransactionRepository:
             WHERE hash = $3
         """
         await self.db.execute(query, score, json.dumps(factors), tx_hash)
+
+    async def update_explanation(self, tx_hash: str, explanation: str) -> None:
+        """Update AI-generated explanation for a transaction."""
+        query = """
+            UPDATE transactions 
+            SET ai_explanation = $1
+            WHERE hash = $2
+        """
+        await self.db.execute(query, explanation, tx_hash)
