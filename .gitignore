@@ -81,4 +81,4 @@ yarn-error.log*
 # DOCKER
 # ============================================
 postgres-data/
-redis-data/
+redis-data/backups/
